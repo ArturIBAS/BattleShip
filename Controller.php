@@ -1,16 +1,13 @@
 <?php
 require 'Cell.php';
 require 'Player.php';
-
 class Controller{
-
 	public function action(){
 		if(!empty($_GET['action'])){
 		switch ($_GET['action']) {
 			case 'setPlayer':
 				return Controller::setPlayer();
 				break;
-
 			case 'moveStep':
 			return Controller::moveStep();
 			break;
@@ -18,14 +15,10 @@ class Controller{
 		}
 	}
 	}
-
-
-
 	private function setPlayer(){//записывает объект "игрок" в файл
 		$cells=Controller::arangeShips();
 		$historyMoves=[];
 		$wr=false;
-
 		if(filesize("/home/artur/BattleShip/JSON/player1.json")==0){
 			$player=new Player($_GET['namePlayer'],$cells,$historyMoves,TRUE);
 			$fd=fopen("/home/artur/BattleShip/JSON/player1.json", "r+");
@@ -49,28 +42,21 @@ class Controller{
 		$player1=json_decode($player1);
 		$player2=file_get_contents("/home/artur/BattleShip/JSON/player2.json");
 		$player2=json_decode($player2);
-
 		if($player1->isAttack){
 			return 1;
 		}
-
 		if($player2->isAttack){
 			return 2;
 		}
 	}
-
 	 public function moveStep(){//выполнение хода
-
 	 	$p1=file_get_contents("/home/artur/BattleShip/JSON/player1.json");
 		$player1=json_decode($p1);
 		$p2=file_get_contents("/home/artur/BattleShip/JSON/player2.json");
 		$player2=json_decode($p2);
 		$step=Controller::determineQueue();
-
-
 	 	if($step==1){
 	 		$enemyCells=$player2->cells;
-
 	 		foreach ($enemyCells as $cell) {
 		 			if($cell->numCell==$_GET['chosenCell']){
 		 				if($cell->cellCondition==0){
@@ -80,7 +66,6 @@ class Controller{
 		 					break;
 		 				}
 		 				if($cell->cellCondition==1) $cell->cellCondition=3;
-
 		 				}
 		 			}
 		 		
@@ -88,19 +73,15 @@ class Controller{
 	 		$player2->cells=$enemyCells;
 			$p2=json_encode($player2);
 			$p1=json_encode($player1);
-
 			$wr1=file_put_contents("/home/artur/BattleShip/JSON/player1.json",$p1);
 			$wr1=(boolean)$wr1;
 			$wr2=file_put_contents("/home/artur/BattleShip/JSON/player2.json",$p2);
 			$wr2=(boolean)$wr2;
-
 			if($wr1 && $wr2) return true;
 			unset($_GET['chosenCell']);
 	}
-
 	 	if($step==2){
 	 		$enemyCells=$player1->cells;
-
 	 		foreach ($enemyCells as $cell) {
 		 			if($cell->numCell==$_GET['chosenCell']){
 		 				if($cell->cellCondition==0){
@@ -110,7 +91,6 @@ class Controller{
 		 					break;
 		 				}
 		 				if($cell->cellCondition==1) $cell->cellCondition=3;
-
 		 				}
 		 			}
 		 		
@@ -118,7 +98,6 @@ class Controller{
 	 		$player1->cells=$enemyCells;
 			$p1=json_encode($player1);
 			$p2=json_encode($player2);
-
 			$wr1=file_put_contents("/home/artur/BattleShip/JSON/player1.json",$p1);
 			$wr1=(boolean)$wr1;
 			$wr2=file_put_contents("/home/artur/BattleShip/JSON/player2.json",$p2);
@@ -127,7 +106,6 @@ class Controller{
 			unset($_GET['chosenCell']);
 	 	}
 	 }
-
 	 public function determineWinner(){
 	 	$p1=file_get_contents("/home/artur/BattleShip/JSON/player1.json");
 		$player1=json_decode($p1);
@@ -137,46 +115,35 @@ class Controller{
 		$cells2=$player2->cells;
 		$affectedCells1=0;
 		$affectedCells2=0;
-
 		foreach ($cells1 as  $cell) {
 			if($cell->cellCondition==3) $affectedCells1++;
 		}
-
 		foreach ($cells2 as  $cell) {
 			if($cell->cellCondition==3) $affectedCells2++;
 		}
-
-		if($affectedCells1==20) return 2;
-		if($affectedCells2==20) return 1;
-		if($affectedCells1<20 && $affectedCells2<20) return 0;
+		if($affectedCells1==4) return 2;
+		if($affectedCells2==4) return 1;
+		if($affectedCells1<4 && $affectedCells2<4) return 0;
 	 }
-
 	 public function createHTML(){
 	 	$p1=file_get_contents("/home/artur/BattleShip/JSON/player1.json");
 		$player1=json_decode($p1);
 		$p2=file_get_contents("/home/artur/BattleShip/JSON/player2.json");
 		$player2=json_decode($p2);
 		$step=Controller::determineQueue();
-
 		$head='
 		<html>
 		<head>
-		<meta http-equiv="refresh" content="10">
 		</head>';
-
 		$body='
 		<body style="background-image:url(back.jpg);background-repeat:no-repeat;">
 		';
-
 		$footer='
 		</body>
 		</html>';
-
-
 	
 		$count1=0;
 		$count2=0;
-
 		 if($step==1){
 			$cells=$player1->cells;
 			$enemyCells=$player2->cells;
@@ -185,11 +152,9 @@ class Controller{
 			$cells=$player2->cells;
 			$enemyCells=$player1->cells;
 		}
-
 		$body.='<p>Вражеское поле: </p>
 			<table style="float:left;margin-top:30px;">
 			<tr>';
-
 			foreach ($enemyCells as $enemyCell) {
 				 if($enemyCell->cellCondition==0 || $enemyCell->cellCondition==1){
 					 $body.='<td><a target="_self" href="index.php?action=moveStep&chosenCell='.(string)$enemyCell->numCell.'">'.'<img src="freeCell.jpg" alt="Not found"/>'.'</a></td>   ';
@@ -211,7 +176,6 @@ class Controller{
 				}
 			}
 			$body.='</table>';
-
 			$body.='
 			<br>
 			<table style="margin:10px 500px 500px 300px;">
@@ -236,14 +200,12 @@ class Controller{
 					}else{
 					$body.='</tr> <tr>';
 				}
-
 				}
 			}
 			$body.='</table>';
 			
 		echo $head.$body.$footer;
 	 }
-
 	public static function arangeShips(){//размещает корабли на поле
 	for ($i=1; $i <=100 ; $i++) {
 	$cells[]=new Cell($i,0);
@@ -258,5 +220,35 @@ class Controller{
     return $cells;
 }
 
+
+// Record the result of the game
+	public function recordResultOfGame($numWinner){
+		require 'connect_db.php';
+		date_default_timezone_set('UTC');
+		$p1=file_get_contents("/home/artur/BattleShip/JSON/player1.json");
+		$player1=json_decode($p1);
+		$p2=file_get_contents("/home/artur/BattleShip/JSON/player2.json");
+		$player2=json_decode($p2);
+		$winnerName='';
+		$loserName='';
+		$time='';
+
+		if($numWinner==1){
+		$winnerName=$player1->name;
+		$loserName=$player2->name;
+		}
+
+		if($numWinner==2){
+		$winnerName=$player2->name;
+		$loserName=$player1->name;
+		}
+
+		$time=date('l jS \of F Y h:i:s A');
+		$query="INSERT INTO playersBattleShip VALUES(DEFAULT,'$winnerName','$loserName','$time');";
+		$count=$pdo->exec($query);
+
+	 	// $query="INSERT INTO playersBattleShip VALUES(DEFAULT,'Artur1111','Artur2222');";
+	 	// $count=$pdo->exec($query);	
+	}
 }
 ?>
