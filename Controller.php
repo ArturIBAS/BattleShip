@@ -24,7 +24,7 @@ class Controller{
 		if($countPlayers==0){
 			$player_obj=new Player($_GET['namePlayer'],$cells,true);
 			$time=date('l jS \of F Y h:i:s A');
-			$count=$pdo->exec("INSERT INTO games VALUES(DEFAULT,' ',' ',' ',' ')");
+			$count=$pdo->exec("INSERT INTO games VALUES(DEFAULT,'$time',' ',' ',' ')");//при создании первого игра создаётся запись игры
 			$count=$pdo->exec("INSERT INTO players VALUES(DEFAULT,1,'$player_obj->name',true)");
 		}else{
 			$player_obj=new Player($_GET['namePlayer'],$cells,false);
