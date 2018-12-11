@@ -1,9 +1,13 @@
 <?php
 
 class GeneratorHTML{
+    
 
 	public static function createHTML(){
-	 	if(filesize("/home/artur/BattleShip/JSON/player1.json")==0 || filesize("/home/artur/BattleShip/JSON/player2.json")==0){
+        require 'connect_db.php';
+        $countPlayers=$pdo->query("SELECT COUNT(*) as count FROM players")->fetchColumn();
+
+	 	if($countPlayers<2){
 	 		$head='
 	 		<!DOCTYPE html>
 			<html>
@@ -180,10 +184,9 @@ class GeneratorHTML{
 		</html>';
 
 }else{
-		$p1=file_get_contents("/home/artur/BattleShip/JSON/player1.json");
-		$player1=json_decode($p1);
-		$p2=file_get_contents("/home/artur/BattleShip/JSON/player2.json");
-		$player2=json_decode($p2);
+        $player1=Controller::getPlayer(1);
+        $player2=Controller::getPlayer(2);
+
 		$step=Controller::determineQueue();
 		$head='
 		<html>
