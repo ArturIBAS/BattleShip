@@ -48,10 +48,10 @@ class Controller{
 
 	}
 
-		public static function getPlayer($numPlayer){
+		public static function getPlayer($numPlayer){//считывает всю информацию из бд и возвращает объект "игрок"
 		require 'connect_db.php';
 
-		$p=$pdo->query("SELECT * FROM players WHERE num_player=$numPlayer");
+	$p=$pdo->query("SELECT * FROM players WHERE num_player=$numPlayer");
         $arrPlayer=$p->fetch();
         $playerId=$arrPlayer['id'];
         
@@ -73,7 +73,7 @@ class Controller{
         }
 
 
-	public static function determineQueue(){
+	public static function determineQueue(){//определяет очередность хода
 		require 'connect_db.php';
 		$p1=$pdo->query("SELECT * FROM players WHERE num_player=1");
 		$arrPlayer1=$p1->fetch();
@@ -91,11 +91,11 @@ class Controller{
 
 	}
 
-	public static function fillPlayer($player,$numPlayer){
+	public static function fillPlayer($player,$numPlayer){//после выполнения хода обновляет информацию об игроке в бд
 		require 'connect_db.php';
 		$count=$pdo->exec("UPDATE players SET is_attack=$player->isAttack WHERE num_player=$numPlayer");
 
-		$p=$pdo->query("SELECT id FROM players WHERE num_player=$numPlayer");
+	$p=$pdo->query("SELECT id FROM players WHERE num_player=$numPlayer");
         $arrPlayer=$p->fetch();
         $playerId=$arrPlayer['id'];
         
@@ -161,7 +161,7 @@ class Controller{
 
 
 
-	 public function determineWinner(){
+	 public function determineWinner(){//определяет победителя в игре
 	 	if($pdo->query("SELECT COUNT(*) as count FROM players")->fetchColumn()==2){
 	 	$player1=Controller::getPlayer(1);
 	 	$player2=Controller::getPlayer(2);
