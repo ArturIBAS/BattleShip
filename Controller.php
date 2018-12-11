@@ -2,123 +2,169 @@
 
 class Controller{
 	public function action(){
+		require 'connect_db.php';
+
 		if(!empty($_GET['action'])){
 		switch ($_GET['action']) {
 			case 'setPlayer':
-				return Controller::setPlayer();
+				return Controller::setPlayer($pdo);
 				break;
 			case 'moveStep':
-			return Controller::moveStep();
+			return Controller::moveStep($pdo);
 			break;
 		
 		}
 	}
 	}
-	private function setPlayer(){//записывает объект "игрок" в файл
+
+	public function setPlayer($pdo){
 		$cells=Controller::arangeShips();
-		$historyMoves=[];
-		$wr=false;
-		if(filesize("/home/artur/BattleShip/JSON/player1.json")==0){
-			$player=new Player($_GET['namePlayer'],$cells,$historyMoves,TRUE);
-			$fd=fopen("/home/artur/BattleShip/JSON/player1.json", "r+");
-			$player=json_encode($player);
-			$wr=fputs($fd,$player);
-			$wr=(boolean)$wr;
-		}else{
-			if(filesize("/home/artur/BattleShip/JSON/player2.json")==0){
-			$player=new Player($_GET['namePlayer'],$cells,$historyMoves,FALSE);
-			$fd=fopen("/home/artur/BattleShip/JSON/player2.json", "r+");
-			$player=json_encode($player);
-			$wr=fputs($fd,$player);
-			$wr=(boolean)$wr;
-			}
-		}
-		return $wr;
-	}
-	// private function setPlayer(){//записывает объект "игрок" в файл
-	// 	$cells=Controller::arangeShips();
+		$countPlayers=$pdo->query("SELECT COUNT(*) as count FROM players")->fetchColumn();//проверка на пустоту таблицы players
 		
-	// }
+		if($countPlayers==0){
+			$player_obj=new Player($_GET['namePlayer'],$cells,true);
+			$time=date('l jS \of F Y h:i:s A');
+			$count=$pdo->exec("INSERT INTO games VALUES(DEFAULT,' ',' ',' ',' ')");
+			$count=$pdo->exec("INSERT INTO players VALUES(DEFAULT,1,'$player_obj->name',true)");
+		}else{
+			$player_obj=new Player($_GET['namePlayer'],$cells,false);
+			$count=$pdo->exec("INSERT INTO players VALUES(DEFAULT,2,'$player_obj->name',false)");
+		}
+
+			$p=$pdo->query("SELECT id FROM players WHERE id=(SELECT MAX(id) FROM players)");
+			$arrPlayer=$p->fetch();
+			$g=$pdo->query("SELECT id FROM games");
+			$arrGame=$g->fetch();
+			$idGame=$arrGame['id'];
+			$idPlayer=$arrPlayer['id'];
+			$count=$pdo->exec("INSERT INTO fields VALUES(DEFAULT,$idPlayer,$idGame);");
+			$f=$pdo->query("SELECT id FROM fields WHERE id=(SELECT MAX(id) FROM fields)");
+			$arrField=$f->fetch();
+			$idField=$arrField['id'];
+
+			foreach ($cells as $cell) {
+				$count=$pdo->exec("INSERT INTO cells VALUES(DEFAULT,$cell->numCell,$cell->cellCondition,$idField);");
+			}
+
+	}
+
+		public static function getPlayer($numPlayer){
+		require 'connect_db.php';
+
+		$p=$pdo->query("SELECT * FROM players WHERE num_player=$numPlayer");
+        $arrPlayer=$p->fetch();
+        $playerId=$arrPlayer['id'];
+        
+        $f=$pdo->query("SELECT * FROM fields WHERE player_id=$playerId");
+        $arrField=$f->fetch();
+        $fieldId=$arrField['id'];
+
+        $c=$pdo->query("SELECT * FROM cells WHERE field_id=$fieldId");
 
 
-	public static function determineQueue(){//определяет очередность хода
-		$player1=file_get_contents("/home/artur/BattleShip/JSON/player1.json");
-		$player1=json_decode($player1);
-		$player2=file_get_contents("/home/artur/BattleShip/JSON/player2.json");
-		$player2=json_decode($player2);
-		if($player1->isAttack){
+        while ($cellOutTable=$c->fetch()) {
+                $cells[]=new Cell($cellOutTable['num_cell'],$cellOutTable['cell_condition']);
+            }
+
+            $player=new Player($arrPlayer['name_player'],$cells,$arrPlayer['is_attack']);
+            
+             return $player;
+            
+        }
+
+
+	public static function determineQueue(){
+		require 'connect_db.php';
+		$p1=$pdo->query("SELECT * FROM players WHERE num_player=1");
+		$arrPlayer1=$p1->fetch();
+
+		$p2=$pdo->query("SELECT * FROM players WHERE num_player=2");
+		$arrPlayer2=$p2->fetch();
+		
+		if($arrPlayer1['is_attack']){
 			return 1;
 		}
-		if($player2->isAttack){
+
+		if($arrPlayer2['is_attack']){
 			return 2;
 		}
-	}
-	 public function moveStep(){//выполнение хода
-	 	$p1=file_get_contents("/home/artur/BattleShip/JSON/player1.json");
-		$player1=json_decode($p1);
-		$p2=file_get_contents("/home/artur/BattleShip/JSON/player2.json");
-		$player2=json_decode($p2);
-		$step=Controller::determineQueue();
 
-	 	if($step==1){
-	 		echo "Ход игрока $player1->name";
-	 		$enemyCells=$player2->cells;
-	 		foreach ($enemyCells as $cell) {
-		 			if($cell->numCell==$_GET['chosenCell']){
-		 				if($cell->cellCondition==0){
-		 					$cell->cellCondition=2;
-		 					$player1->isAttack=false;
-		 					$player2->isAttack=true;
-		 					break;
-		 				}
-		 				if($cell->cellCondition==1) $cell->cellCondition=3;
-		 				}
-		 			}
-		 		
-	 		
-	 		$player2->cells=$enemyCells;
-			$p2=json_encode($player2);
-			$p1=json_encode($player1);
-			$wr1=file_put_contents("/home/artur/BattleShip/JSON/player1.json",$p1);
-			$wr1=(boolean)$wr1;
-			$wr2=file_put_contents("/home/artur/BattleShip/JSON/player2.json",$p2);
-			$wr2=(boolean)$wr2;
-			if($wr1 && $wr2) return true;
-			unset($_GET['chosenCell']);
 	}
-	 	if($step==2){
-	 		echo "Ход игрока $player2->name";
-	 		$enemyCells=$player1->cells;
-	 		foreach ($enemyCells as $cell) {
-		 			if($cell->numCell==$_GET['chosenCell']){
-		 				if($cell->cellCondition==0){
-		 					$cell->cellCondition=2;
-		 					$player2->isAttack=false;
-		 					$player1->isAttack=true;
-		 					break;
-		 				}
-		 				if($cell->cellCondition==1) $cell->cellCondition=3;
-		 				}
-		 			}
-		 		
-	 		
-	 		$player1->cells=$enemyCells;
-			$p1=json_encode($player1);
-			$p2=json_encode($player2);
-			$wr1=file_put_contents("/home/artur/BattleShip/JSON/player1.json",$p1);
-			$wr1=(boolean)$wr1;
-			$wr2=file_put_contents("/home/artur/BattleShip/JSON/player2.json",$p2);
-			$wr2=(boolean)$wr2;
-			if($wr1 && $wr2) return true;
-			unset($_GET['chosenCell']);
-	 	}
+
+	public static function fillPlayer($player,$numPlayer){
+		require 'connect_db.php';
+		$count=$pdo->exec("UPDATE players SET is_attack=$player->isAttack WHERE num_player=$numPlayer");
+
+		$p=$pdo->query("SELECT id FROM players WHERE num_player=$numPlayer");
+        $arrPlayer=$p->fetch();
+        $playerId=$arrPlayer['id'];
+        
+        $f=$pdo->query("SELECT id FROM fields WHERE player_id=$playerId");
+        $arrField=$f->fetch();
+        $fieldId=$arrField['id'];
+
+        $cells=$player->cells;
+		foreach ($cells as $cell) {
+				$count=$pdo->exec("UPDATE cells SET cell_condition=$cell->cellCondition WHERE num_cell=$cell->numCell and field_id=$fieldId");
+			}
+
+	}
+
+	 public function moveStep($pdo){//выполнение хода
+	 	$player1=Controller::getPlayer(1);
+	 	$player2=Controller::getPlayer(2);
+
+		$step=Controller::determineQueue();
+		$cells=[];
+		$enemyCells=[];
+		
+		if($step==1){
+			$walkPlayer=$player1;
+			$enemyPlayer=$player2;
+		}
+		if($step==2){
+			$walkPlayer=$player2;
+			$enemyPlayer=$player1;
+		}
+
+		echo "Ход игрока $walkPlayer->name";
+
+		foreach ($enemyPlayer->cells as $cell) {
+			if($cell->numCell==$_GET['chosenCell']){
+				if($cell->cellCondition==0){
+					$cell->cellCondition==2;
+					$walkPlayer->isAttack=false;
+					$enemyPlayer->isAttack=true;
+					break;
+				}
+				if($cell->cellCondition==1) $cell->cellCondition=3;
+			}
+		}
+
+		if($step==1){
+			$player1=$walkPlayer;
+			$player2=$enemyPlayer;
+		}
+		
+		if($step==2){
+			$player2=$walkPlayer;
+			$player1=$enemyPlayer;
+		}
+
+		Controller::fillPlayer($player1,1);
+		Controller::fillPlayer($player2,2);
+
+
 	 }
+	
+
+
+
+
 	 public function determineWinner(){
-	 	if(filesize("/home/artur/BattleShip/JSON/player1.json")!==0 && filesize("/home/artur/BattleShip/JSON/player2.json")!==0){
-	 	$p1=file_get_contents("/home/artur/BattleShip/JSON/player1.json");
-		$player1=json_decode($p1);
-		$p2=file_get_contents("/home/artur/BattleShip/JSON/player2.json");
-		$player2=json_decode($p2);
+	 	if($pdo->query("SELECT COUNT(*) as count FROM players")->fetchColumn()==2){
+	 	$player1=Controller::getPlayer(1);
+	 	$player2=Controller::getPlayer(2);
 		$cells1=$player1->cells;
 		$cells2=$player2->cells;
 		$affectedCells1=0;
@@ -130,14 +176,15 @@ class Controller{
 			if($cell->cellCondition==3) $affectedCells2++;
 		}
 
-		if($affectedCells1==4) {
+		if($affectedCells1==20) {
 			return 2;
 	}
-		if($affectedCells2==4){
+		if($affectedCells2==20){
 			return 1;
 		}
 		return 0;
 	}
+	return 0;
 }
 	
 	public static function arangeShips(){//размещает корабли на поле
@@ -153,35 +200,6 @@ class Controller{
     }
     return $cells;
 }
-// Record the result of the game
-
-	public function recordResultOfGame($numWinner){
-		require 'connect_db.php';
-		
-		date_default_timezone_set('UTC');
-		$p1=file_get_contents("/home/artur/BattleShip/JSON/player1.json");
-		$player1=json_decode($p1);
-		$p2=file_get_contents("/home/artur/BattleShip/JSON/player2.json");
-		$player2=json_decode($p2);
-		$winnerName='';
-		$loserName='';
-		$time='';
-		if($numWinner==1){
-		$winnerName=$player1->name;
-		$loserName=$player2->name;
-		}
-
-		if($numWinner==2){
-		$winnerName=$player2->name;
-		$loserName=$player1->name;
-		}
-
-		$time=date('l jS \of F Y h:i:s A');
-		$query="INSERT INTO playersBattleShip VALUES(DEFAULT,'$winnerName','$loserName','$time');";
-		$count=$pdo->exec($query);
-	 	
-	 	// $query="INSERT INTO playersBattleShip VALUES(DEFAULT,'Artur1111','Artur2222');";
-	 	// $count=$pdo->exec($query);	
-	}
+//Конец класса
 }
 ?>
