@@ -7,5 +7,7 @@ class Cell{
         $this->numCell=$numberCell;
         $this->cellCondition=$cellCond;
     }
+
 }
+
 ?>
