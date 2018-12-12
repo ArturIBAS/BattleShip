@@ -24,7 +24,7 @@ class Controller{
 		if($countPlayers==0){
 			$player_obj=new Player($_GET['namePlayer'],$cells,true);
 			$time=date('l jS \of F Y h:i:s A');
-			$count=$pdo->exec("INSERT INTO games VALUES(DEFAULT,'$time',' ',' ',' ')");//при создании первого игра создаётся запись игры
+			$count=$pdo->exec("INSERT INTO games VALUES(DEFAULT,' ',' ',' ',' ')");
 			$count=$pdo->exec("INSERT INTO players VALUES(DEFAULT,1,'$player_obj->name',true)");
 		}else{
 			$player_obj=new Player($_GET['namePlayer'],$cells,false);
@@ -48,10 +48,18 @@ class Controller{
 
 	}
 
-		public static function getPlayer($numPlayer){//считывает всю информацию из бд и возвращает объект "игрок"
+
+		public static function mySort($cell1,$cell2)//сортирует массив клеток при считывании с бд
+  		 {
+      			if($cell1->numCell < $cell2->numCell) return -1;
+      			elseif($cell1->numCell > $cell2->numCell) return 1;
+      			else return 0;
+  		 }
+
+		public static function getPlayer($numPlayer){
 		require 'connect_db.php';
 
-	$p=$pdo->query("SELECT * FROM players WHERE num_player=$numPlayer");
+		$p=$pdo->query("SELECT * FROM players WHERE num_player=$numPlayer");
         $arrPlayer=$p->fetch();
         $playerId=$arrPlayer['id'];
         
@@ -65,6 +73,7 @@ class Controller{
         while ($cellOutTable=$c->fetch()) {
                 $cells[]=new Cell($cellOutTable['num_cell'],$cellOutTable['cell_condition']);
             }
+            uasort($cells,"Controller::mySort");
 
             $player=new Player($arrPlayer['name_player'],$cells,$arrPlayer['is_attack']);
             
@@ -73,7 +82,7 @@ class Controller{
         }
 
 
-	public static function determineQueue(){//определяет очередность хода
+	public static function determineQueue(){
 		require 'connect_db.php';
 		$p1=$pdo->query("SELECT * FROM players WHERE num_player=1");
 		$arrPlayer1=$p1->fetch();
@@ -91,11 +100,17 @@ class Controller{
 
 	}
 
-	public static function fillPlayer($player,$numPlayer){//после выполнения хода обновляет информацию об игроке в бд
+	public static function fillPlayer($player,$numPlayer){
 		require 'connect_db.php';
-		$count=$pdo->exec("UPDATE players SET is_attack=$player->isAttack WHERE num_player=$numPlayer");
+		if($player->isAttack){
+			$isAttack="true";
+		}else{
+			$isAttack="false";
+		}
 
-	$p=$pdo->query("SELECT id FROM players WHERE num_player=$numPlayer");
+		$count=$pdo->exec("UPDATE players SET is_attack=$isAttack WHERE num_player=$numPlayer");
+
+		$p=$pdo->query("SELECT id FROM players WHERE num_player=$numPlayer");
         $arrPlayer=$p->fetch();
         $playerId=$arrPlayer['id'];
         
@@ -103,12 +118,19 @@ class Controller{
         $arrField=$f->fetch();
         $fieldId=$arrField['id'];
 
-        $cells=$player->cells;
-		foreach ($cells as $cell) {
+		foreach ($player->cells as $cell) {
 				$count=$pdo->exec("UPDATE cells SET cell_condition=$cell->cellCondition WHERE num_cell=$cell->numCell and field_id=$fieldId");
 			}
 
 	}
+
+// 	function cmp($a, $b)
+// {
+//     return strcmp($a->name, $b->name);
+// }
+
+// usort($your_data, "cmp");
+
 
 	 public function moveStep($pdo){//выполнение хода
 	 	$player1=Controller::getPlayer(1);
@@ -119,12 +141,12 @@ class Controller{
 		$enemyCells=[];
 		
 		if($step==1){
-			$walkPlayer=$player1;
-			$enemyPlayer=$player2;
+			$walkPlayer=new Player($player1->name,$player1->cells,$player1->isAttack);
+			$enemyPlayer=new Player($player2->name,$player2->cells,$player2->isAttack);
 		}
 		if($step==2){
-			$walkPlayer=$player2;
-			$enemyPlayer=$player1;
+			$walkPlayer=new Player($player2->name,$player2->cells,$player2->isAttack);
+			$enemyPlayer=new Player($player1->name,$player1->cells,$player1->isAttack);
 		}
 
 		echo "Ход игрока $walkPlayer->name";
@@ -132,7 +154,7 @@ class Controller{
 		foreach ($enemyPlayer->cells as $cell) {
 			if($cell->numCell==$_GET['chosenCell']){
 				if($cell->cellCondition==0){
-					$cell->cellCondition==2;
+					$cell->cellCondition=2;
 					$walkPlayer->isAttack=false;
 					$enemyPlayer->isAttack=true;
 					break;
@@ -142,13 +164,13 @@ class Controller{
 		}
 
 		if($step==1){
-			$player1=$walkPlayer;
-			$player2=$enemyPlayer;
+			$player1=$player1->copyPlayer($walkPlayer);
+			$player2=$player2->copyPlayer($enemyPlayer);
 		}
 		
 		if($step==2){
-			$player2=$walkPlayer;
-			$player1=$enemyPlayer;
+			$player1=$player1->copyPlayer($enemyPlayer);
+			$player2=$player2->copyPlayer($walkPlayer);
 		}
 
 		Controller::fillPlayer($player1,1);
@@ -161,7 +183,7 @@ class Controller{
 
 
 
-	 public function determineWinner(){//определяет победителя в игре
+	 public function determineWinner(){
 	 	if($pdo->query("SELECT COUNT(*) as count FROM players")->fetchColumn()==2){
 	 	$player1=Controller::getPlayer(1);
 	 	$player2=Controller::getPlayer(2);
@@ -200,6 +222,16 @@ class Controller{
     }
     return $cells;
 }
+
+
+
+// public function cmp($cell1,$cell2){
+//     	return strcmp((string)$cell1->numCell,(string)$cell2->numCell);
+//     }
+
+//     public function sortCells(){
+//     	usort($your_data, array($this, "cmp"))
+//     }
 //Конец класса
 }
 ?>
